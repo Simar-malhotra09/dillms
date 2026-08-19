@@ -32,7 +32,8 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
         MatchRecord(
             match_id=config.match_id,
             game=config.game.value,
-            condition=config.condition.value,
+            p1_condition=config.p1_condition.value,
+            p2_condition=config.p2_condition.value,
             placement=config.placement.value,
             p1_model=config.p1.model_id,
             p2_model=config.p2.model_id,
@@ -52,10 +53,17 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
         for entry in comms:
             append_jsonl(comms_path, entry)
         if comms:
-            labels = run_judge(judge_spec, comms)
+            labels, judge_pt, judge_ct, judge_rt, judge_lat = run_judge(judge_spec, comms)
             append_jsonl(
                 judge_path,
-                JudgeLabelRecord(match_id=config.match_id, **labels.model_dump()),
+                JudgeLabelRecord(
+                    match_id=config.match_id,
+                    **labels.model_dump(),
+                    prompt_tokens=judge_pt,
+                    completion_tokens=judge_ct,
+                    reasoning_tokens=judge_rt,
+                    latency_ms=judge_lat,
+                ),
             )
 
     p1_discovery_text = build_transcript_text(comms, config.p1.model_id) if comms else ""
@@ -70,8 +78,8 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
     continue_game = True
 
     while continue_game and round_idx <= config.num_rounds:
-        p1_block = build_condition_block(config.condition, config.p1, config.p2, config.profile_text_p1)
-        p2_block = build_condition_block(config.condition, config.p2, config.p1, config.profile_text_p2)
+        p1_block = build_condition_block(config.p1_condition, config.p1, config.p2, config.profile_text_p1)
+        p2_block = build_condition_block(config.p2_condition, config.p2, config.p1, config.profile_text_p2)
 
         p1_history = build_history_text(config.game, config.p1.model_id, rounds_so_far_p1)
         p2_history = build_history_text(config.game, config.p2.model_id, rounds_so_far_p2)
@@ -100,10 +108,10 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
         )
 
         valid_actions = VALID_ACTIONS[config.game]
-        p1_decision, p1_raw, p1_pt, p1_ct, p1_lat = get_round_decision(
+        p1_decision, p1_raw, p1_pt, p1_ct, p1_rt, p1_lat = get_round_decision(
             config.p1, p1_messages, config.temperature, valid_actions
         )
-        p2_decision, p2_raw, p2_pt, p2_ct, p2_lat = get_round_decision(
+        p2_decision, p2_raw, p2_pt, p2_ct, p2_rt, p2_lat = get_round_decision(
             config.p2, p2_messages, config.temperature, valid_actions
         )
 
@@ -122,7 +130,7 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
             round_idx=round_idx,
             actor_model=config.p1.model_id,
             opponent_model=config.p2.model_id,
-            condition=config.condition.value,
+            condition=config.p1_condition.value,
             placement=config.placement.value,
             self_prefers=config.p1_prefers,
             action=p1_decision.action,
@@ -137,6 +145,7 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
             latency_ms=p1_lat,
             prompt_tokens=p1_pt,
             completion_tokens=p1_ct,
+            reasoning_tokens=p1_rt,
         )
         p2_record = RoundRecord(
             match_id=config.match_id,
@@ -144,7 +153,7 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
             round_idx=round_idx,
             actor_model=config.p2.model_id,
             opponent_model=config.p1.model_id,
-            condition=config.condition.value,
+            condition=config.p2_condition.value,
             placement=config.placement.value,
             self_prefers=config.p2_prefers,
             action=p2_decision.action,
@@ -159,6 +168,7 @@ def run_match(config: MatchConfig, results_dir: Path, judge_spec: ModelSpec) -> 
             latency_ms=p2_lat,
             prompt_tokens=p2_pt,
             completion_tokens=p2_ct,
+            reasoning_tokens=p2_rt,
         )
 
         append_jsonl(rounds_path, p1_record)

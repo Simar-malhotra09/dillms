@@ -45,13 +45,16 @@ class ModelSpec:
     reasoning_effort: str
     max_completion_tokens: int
     include_reasoning: bool
+    thinking_disabled: bool
+    required_temperature: float | None
 
 
 @dataclass(frozen=True)
 class MatchConfig:
     match_id: str
     game: Game
-    condition: Condition
+    p1_condition: Condition
+    p2_condition: Condition
     placement: Placement
     p1: ModelSpec
     p2: ModelSpec
@@ -69,7 +72,8 @@ class MatchConfig:
 class MatchRecord:
     match_id: str
     game: str
-    condition: str
+    p1_condition: str
+    p2_condition: str
     placement: str
     p1_model: str
     p2_model: str
@@ -104,6 +108,7 @@ class RoundRecord:
     latency_ms: float
     prompt_tokens: int
     completion_tokens: int
+    reasoning_tokens: int
 
 
 @dataclass(frozen=True)
@@ -112,6 +117,17 @@ class CommsRecord:
     exchange_idx: int
     speaker_model: str
     message_text: str
+    prompt_tokens: int
+    completion_tokens: int
+    reasoning_tokens: int
+    latency_ms: float
+
+
+@dataclass(frozen=True)
+class ModelPricing:
+    model_id: str
+    input_price_per_million_usd: float
+    output_price_per_million_usd: float
 
 
 class RoundDecision(BaseModel):
@@ -139,3 +155,7 @@ class JudgeLabelRecord:
     misrepresents_self: bool
     proposes_convention: bool
     makes_threat_or_commitment: bool
+    prompt_tokens: int
+    completion_tokens: int
+    reasoning_tokens: int
+    latency_ms: float

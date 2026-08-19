@@ -22,8 +22,8 @@ def _validate_message(parsed: dict) -> None:
 
 
 def run_discovery(config: MatchConfig) -> list[CommsRecord]:
-    p1_block = build_condition_block(config.condition, config.p1, config.p2, None)
-    p2_block = build_condition_block(config.condition, config.p2, config.p1, None)
+    p1_block = build_condition_block(config.p1_condition, config.p1, config.p2, None)
+    p2_block = build_condition_block(config.p2_condition, config.p2, config.p1, None)
     p1_rules = build_rules_text(config.game, config.num_rounds, config.p1_prefers)
     p2_rules = build_rules_text(config.game, config.num_rounds, config.p2_prefers)
 
@@ -45,7 +45,7 @@ def run_discovery(config: MatchConfig) -> list[CommsRecord]:
                 {"role": "system", "content": system_content},
                 {"role": "user", "content": f"Conversation so far:\n{transcript_text}\n\nSend your message now."},
             ]
-            parsed, _, _, _, _ = get_json_reply(
+            parsed, _, prompt_tokens, completion_tokens, reasoning_tokens, latency_ms = get_json_reply(
                 speaker_spec,
                 messages,
                 1.0,
@@ -58,6 +58,10 @@ def run_discovery(config: MatchConfig) -> list[CommsRecord]:
                     exchange_idx=exchange_idx,
                     speaker_model=speaker_spec.model_id,
                     message_text=parsed["message"],
+                    prompt_tokens=prompt_tokens,
+                    completion_tokens=completion_tokens,
+                    reasoning_tokens=reasoning_tokens,
+                    latency_ms=latency_ms,
                 )
             )
             exchange_idx += 1

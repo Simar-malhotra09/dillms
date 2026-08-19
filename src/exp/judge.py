@@ -16,7 +16,8 @@ def _validate_labels(parsed: dict) -> None:
     JudgeLabels.model_validate(parsed)
 
 
-def run_judge(judge_spec: ModelSpec, comms: list[CommsRecord]) -> JudgeLabels:
+def run_judge(judge_spec: ModelSpec, comms: list[CommsRecord]) -> tuple[JudgeLabels, int, int, int, float]:
+    """Returns (labels, prompt_tokens, completion_tokens, reasoning_tokens, latency_ms)."""
     transcript_text = "\n".join(
         f"[speaker={entry.speaker_model}]: {entry.message_text}" for entry in comms
     )
@@ -38,7 +39,7 @@ def run_judge(judge_spec: ModelSpec, comms: list[CommsRecord]) -> JudgeLabels:
         {"role": "system", "content": system_content},
         {"role": "user", "content": f"Transcript:\n{transcript_text}"},
     ]
-    parsed, _, _, _, _ = get_json_reply(
+    parsed, _, prompt_tokens, completion_tokens, reasoning_tokens, latency_ms = get_json_reply(
         judge_spec, messages, 1.0, _validate_labels, JUDGE_SCHEMA_HINT
     )
-    return JudgeLabels.model_validate(parsed)
+    return JudgeLabels.model_validate(parsed), prompt_tokens, completion_tokens, reasoning_tokens, latency_ms
